@@ -168,6 +168,7 @@
                              (correlated->annotation v))))))))
       v]))
 
+  (include "linklet/version.ss")
   (include "linklet/write.ss")
   (include "linklet/read.ss")
   (include "linklet/annotation.ss")
@@ -871,6 +872,10 @@
   (when omit-debugging?
     (generate-inspector-information (not omit-debugging?))
     (generate-procedure-source-information #t))
+
+  (when measure-performance?
+    (#%$enable-pass-timing #t)
+    (#%$clear-pass-stats))
 
   (set-foreign-eval! eval/foreign)
 

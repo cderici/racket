@@ -9,12 +9,38 @@ LIBS = $(RKTIO_LIB) \
        $(SCHEME_DIR)\$(MACHINE)\boot\$(MACHINE)\$(SCHEME_LIB) \
        $(WIN32_LIBS)
 
+DEST_DLL = ..\..\build\raw_libracketcs.dll
 DEST = ..\..\build\raw_racketcs.exe
+GDEST = ..\..\build\raw_gracketcs.exe
 CSDIR = ..\..\cs\c
 
-$(DEST): $(CSDIR).\main.c $(CSDIR)\boot.c $(RKTIO_LIB)
-	cl /Fe$(DEST) /Ox /MT $(INCS) $(CSDIR)\main.c $(CSDIR)\boot.c $(LIBS)
+MAIN_DEPS = ..\..\start\config.inc \
+            ..\..\start\parse_cmdl.inc \
+            ..\..\start\delayed.inc \
+            ..\..\start\win_single.inc
 
+FLAGS = /DWIN32
+COMP_SUBDIR = /DCS_COMPILED_SUBDIR=1
+
+all: $(DEST) $(GDEST)
+
+$(DEST_DLL): $(CSDIR)\boot.c libracket.res $(RKTIO_LIB)
+	cl /LD /DLL /Fe$(DEST_DLL) /Ox /MT $(FLAGS) $(INCS) $(CSDIR)\boot.c libracket.res $(LIBS)
+
+libracket.res: libracket.rc
+	rc /l 0x409 /folibracket.res libracket.rc
+
+$(DEST): $(CSDIR)\main.c $(MAIN_DEPS) $(DEST_DLL) racket.res
+	cl /Fe$(DEST) /Ox /MT $(COMP_SUBDIR) $(FLAGS) $(INCS) $(CSDIR)\main.c racket.res $(WIN32_LIBS)
+
+racket.res: ../racket/racket.rc ../racket/racket.ico
+	rc /l 0x409 /foracket.res ../racket/racket.rc
+
+$(GDEST): $(CSDIR)\grmain.c $(CSDIR)\main.c $(MAIN_DEPS) $(DEST_DLL) gracket.res
+	cl /Fe$(GDEST) /Ox /MT $(COMP_SUBDIR) $(FLAGS) $(INCS) $(CSDIR)\grmain.c gracket.res $(WIN32_LIBS)
+
+gracket.res: ../gracket/gracket.rc ../gracket/gracket.ico
+	rc /l 0x409 /fogracket.res ../gracket/gracket.rc
 
 # Useful for debugging:
 

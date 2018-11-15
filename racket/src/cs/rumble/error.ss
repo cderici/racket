@@ -346,7 +346,10 @@
                                               (number->string (arity-at-least-value arity))))]
      [else ""])))
 
-(define (raise-result-arity-error who num-expected-args where args)
+(define/who (raise-result-arity-error who num-expected-args where . args)
+  (check who symbol? :or-false who)
+  (check who exact-nonnegative-integer? num-expected-args)
+  (check who string? :or-false where)
   (raise
    (|#%app|
     exn:fail:contract:arity
@@ -356,7 +359,7 @@
      " expected number of values not received\n"
      "  received: " (number->string (length args)) "\n" 
      "  expected: " (number->string num-expected-args)
-     where)
+     (or where ""))
     (current-continuation-marks))))
 
 (define (raise-binding-result-arity-error expected-args args)
@@ -567,29 +570,31 @@
   (when (or (continuation-condition? v)
             (and (exn? v)
                  (not (exn:fail:user? v))))
-    (eprintf "\n  context...:")
-    (let loop ([l (traces->context
-                   (if (exn? v)
-                       (continuation-mark-set-traces (exn-continuation-marks v))
-                       (list (continuation->trace (condition-continuation v)))))]
-               [n (|#%app| error-print-context-length)])
-      (unless (or (null? l) (zero? n))
-        (let* ([p (car l)]
-               [s (cdr p)])
-          (cond
-           [(and s
-                 (srcloc-line s)
-                 (srcloc-column s))
-            (eprintf "\n   ~a:~a:~a" (srcloc-source s) (srcloc-line s) (srcloc-column s))
-            (when (car p)
-              (eprintf ": ~a" (car p)))]
-           [(and s (srcloc-position s))
-            (eprintf "\n   ~a::~a" (srcloc-source s) (srcloc-position s))
-            (when (car p)
-              (eprintf ": ~a" (car p)))]
-           [(car p)
-            (eprintf "\n   ~a" (car p))]))
-        (loop (cdr l) (sub1 n)))))
+    (let ([n (|#%app| error-print-context-length)])
+      (unless (zero? n)
+        (eprintf "\n  context...:")
+        (let loop ([l (traces->context
+                       (if (exn? v)
+                           (continuation-mark-set-traces (exn-continuation-marks v))
+                           (list (continuation->trace (condition-continuation v)))))]
+                   [n n])
+          (unless (or (null? l) (zero? n))
+            (let* ([p (car l)]
+                   [s (cdr p)])
+              (cond
+               [(and s
+                     (srcloc-line s)
+                     (srcloc-column s))
+                (eprintf "\n   ~a:~a:~a" (srcloc-source s) (srcloc-line s) (srcloc-column s))
+                (when (car p)
+                  (eprintf ": ~a" (car p)))]
+               [(and s (srcloc-position s))
+                (eprintf "\n   ~a::~a" (srcloc-source s) (srcloc-position s))
+                (when (car p)
+                  (eprintf ": ~a" (car p)))]
+               [(car p)
+                (eprintf "\n   ~a" (car p))]))
+            (loop (cdr l) (sub1 n)))))))
   (eprintf "\n"))
 
 (define eprintf
@@ -659,10 +664,13 @@
        [else
         (|#%app|
          (cond
-          [(and (format-condition? v)
-                (or (string-prefix? "incorrect number of arguments" (condition-message v))
-                    (string-suffix? "values to single value return context" (condition-message v))
-                    (string-prefix? "incorrect number of values received in multiple value context" (condition-message v))))
+          [(or (and (format-condition? v)
+                    (or (string-prefix? "incorrect number of arguments" (condition-message v))
+                        (string-suffix? "values to single value return context" (condition-message v))
+                        (string-prefix? "incorrect number of values received in multiple value context" (condition-message v))))
+               (and (message-condition? v)
+                    (or (string-prefix? "incorrect argument count in call" (condition-message v))
+                        (string-prefix? "incorrect number of values from rhs" (condition-message v)))))
            exn:fail:contract:arity]
           [(and (format-condition? v)
                 (who-condition? v)
@@ -670,7 +678,8 @@
                 (string=? "undefined for ~s" (condition-message v)))
            exn:fail:contract:divide-by-zero]
           [(and (format-condition? v)
-                (string=? "attempt to reference undefined variable ~s" (condition-message v)))
+                (or (string=? "attempt to reference undefined variable ~s" (condition-message v))
+                    (string=? "attempt to assign undefined variable ~s" (condition-message v))))
            (lambda (msg marks)
              (|#%app| exn:fail:contract:variable msg marks (car (condition-irritants v))))]
           [else

@@ -171,6 +171,8 @@
           impersonator-property-accessor-procedure?
           impersonator-ephemeron
           prop:impersonator-of
+          (rename [strip-impersonator unsafe-strip-impersonator] ; not exported to Racket
+                  [prop:authentic-override prop:unsafe-authentic-override])  ; not exported to Racket
 
           impersonate-procedure
           chaperone-procedure
@@ -475,6 +477,7 @@
           system-type
           system-path-convention-type
           system-library-subpath-string ; not exported to Racket
+          set-get-machine-info!         ; not exported to Racket
 
           unsafe-car
           unsafe-cdr
@@ -738,6 +741,7 @@
   (include "rumble/unsafe.ss")
   (include "rumble/extfl.ss")
   (include "rumble/place.ss")
+  (include "rumble/errno-data.ss")
   (include "rumble/foreign.ss")
   (include "rumble/future.ss")
   (include "rumble/inline.ss")

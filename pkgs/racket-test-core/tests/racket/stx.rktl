@@ -423,6 +423,52 @@
             [(eq? v 'do-not-forget-me) #t]
             [else #f]))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Check that 'origin has the right source location,
+;; and that it doesn't have excessive properties
+
+(let ()
+  (define m #`(module m racket/base
+                (require (for-syntax racket/base))
+                (let ()
+                  #,(syntax-property #`(define-values (x y) (values 1 2))
+                                     'on-form
+                                     'dv)
+                  x)))
+  (define e (expand m))
+  (define dv-src
+    (let loop ([m m])
+      (cond
+        [(syntax? m)
+         (or (and (eq? (syntax-e m) 'define-values)
+                  m)
+             (loop (syntax-e m)))]
+        [(pair? m) (or (loop (car m)) (loop (cdr m)))]
+        [else #f])))
+  (define dv-origin
+    (let loop ([e e])
+      (cond
+        [(syntax? e)
+         (define p (syntax-property e 'origin))
+         (or (let loop ([p p])
+               (cond
+                 [(and (identifier? p)
+                       (eq? (syntax-e p) 'define-values))
+                  p]
+                 [(pair? p) (or (loop (car p)) (loop (cdr p)))]
+                 [else #f]))
+             (loop (syntax-e e)))]
+        [(pair? e) (or (loop (car e)) (loop (cdr e)))]
+        [else #f])))
+  (test (list (syntax-line dv-src)
+              (syntax-column dv-src)
+              (syntax-span dv-src))
+        list
+        (syntax-line dv-origin)
+        (syntax-column dv-origin)
+        (syntax-span dv-origin))
+  (test #f syntax-property dv-origin 'on-form))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Check property tracking on `let[rec]-values` binding clauses
 

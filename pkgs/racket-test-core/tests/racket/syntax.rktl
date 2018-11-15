@@ -2132,5 +2132,59 @@
    (list #'=>1 #'=>2 #'else1)))
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Check origin for internal definitions includes define-syntax itself
+
+(define (all-srclocs-included? as bs)
+  (and (for/and ([a (in-list as)])
+         (member a bs srclocs-equal?))
+       #t))
+
+(with-syntax ([define-syntax1 #'define-syntax])
+  (define expanded-stx
+    (parameterize ([current-namespace (make-base-namespace)])
+      (expand (strip-context #'(let ()
+                                 (define-syntax1 foo (syntax-rules ()))
+                                 (void))))))
+  (define expanded-body-stx
+    (syntax-case expanded-stx (let-values)
+      [(let-values _ form) #'form]))
+  (test
+   #t
+   all-srclocs-included?
+   (list #'define-syntax1)
+   (syntax-property expanded-body-stx 'origin)))
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(module tries-to-use-foo-before-defined racket/base
+  (provide result)
+  (define-syntax-rule (go result)
+    ;; `foo` will be macro-introduced
+    (begin
+      (define result
+        (with-handlers ([exn:fail:contract:variable? values])
+          (foo "bar")))
+      (define foo 5)))
+  (go result))
+
+(let ([v (dynamic-require ''tries-to-use-foo-before-defined 'result)])
+  (test #t exn? v)
+  (test #t symbol? (exn:fail:contract:variable-id v))
+  (test #t regexp-match? #rx"^foo:" (exn-message v))
+  (test 5 eval (exn:fail:contract:variable-id v) (module->namespace ''tries-to-use-foo-before-defined)))
+
+;; A top-level `cons` is renamed internally to something like `1/cons`
+;; to avoid shadowing a primitive, but the variable name is still
+;; `cons` and an exception should contain 'cons
+(let ([e (with-handlers ([exn:fail:contract:variable? values])
+           (define ns (make-base-empty-namespace))
+           (namespace-require `(all-except racket/base cons) ns)
+           (eval 'cons ns))])
+  (test #t exn? e)
+  (test #t exn:fail:contract:variable? e)
+  (test 'cons exn:fail:contract:variable-id e)
+  (test #t regexp-match? #rx"^cons: " (exn-message e)))
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (report-errs)

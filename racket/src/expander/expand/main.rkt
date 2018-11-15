@@ -711,7 +711,7 @@
                         #:for-track? [for-track? #f]
                         #:keep-for-parsed? [keep-for-parsed? #f]
                         #:keep-for-error? [keep-for-error? #f])
-  (define d (syntax-e s))
+  (define d (syntax-e/no-taint s))
   (define keep-e (cond
                   [(symbol? d) d]
                   [(and (pair? d) (syntax-identifier? (car d))) (syntax-e (car d))]
@@ -719,6 +719,10 @@
   (cond
    [(expand-context-to-parsed? ctx)
     (and (or keep-for-parsed? keep-for-error?) (datum->syntax #f keep-e s s))]
+   [(and for-track? (pair? d) keep-e)
+    ;; Synthesize form to preserve just source and properties for tracking
+    ;; without affecting the identifier that is kept in 'origin
+    (datum->syntax #f (list (car d)) s s)]
    [else
     (syntax-rearm (datum->syntax (syntax-disarm s) keep-e s s)
                   s)]))

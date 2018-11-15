@@ -52,7 +52,7 @@ If you stick with this repository, then you have several options:
  * In-place Racket-on-Chez build --- when you use `make cs`. Unless
    you use various options described in "More Instructions: Building
    Racket-on-Chez" below, this process downloads Chez Scheme from
-   Github, builds a traditional `racket` with minimal packages, builds
+   GitHub, builds a traditional `racket` with minimal packages, builds
    Chez Scheme, and then builds Racket-on-Chez using Racket and Chez
    Scheme. Final executables that end in "cs" or "CS" are the
    Racket-on-Chez variants.
@@ -178,12 +178,14 @@ More Instructions: Building Racket-on-Chez
 ==========================================
 
 The `make cs` target (or `make cs-as-is` for a rebuild, or `nmake
-win32-cs` on Windows with Visual Studio) builds an experimental
-variant of Racket that runs on Chez Scheme. The executables for the
-Racket-on-Chez variant all have a "cs" or "CS" suffix, so they coexist
-with a traditional Racket build. (One day, if the experiment goes
-well, there will be an option or default to build Racket-on-Chez as
-`racket` instead of `racketcs`.)
+win32-cs` on Windows with Visual Studio) builds a variant of Racket
+that runs on Chez Scheme. By default, the executables for the
+Racket-on-Chez variant all have a "cs" or "CS" suffix, and they
+coexist with a traditional Racket build by keeping compiled files in a
+machine-specific subdirectory of the "compiled" directory. You can
+remove the "cs" suffix and the subdirectory in "compiled" by providing
+`RACKETCS_SUFFIX=""` to `make`. (One day, if all goes well, the
+default for `RACKETCS_SUFFIX` will change from "cs" to "".)
 
 Building Racket-on-Chez requires an existing Racket and Chez Scheme.
 If you use `make cs` with no further arguments, then the build process

@@ -743,7 +743,7 @@
         (with-handlers ([exn:fail? (lambda (x) null)])
           (with-input-from-file path read)))
       (when (and (pair? deps) (list? deps))
-        (for ([s (in-list (cddr deps))])
+        (for ([s (in-list (cdddr deps))])
           (unless (external-dep? s)
               (define new-s (dep->path s))
               (when (path-string? new-s) (hash-set! dependencies new-s #t))))))
@@ -887,7 +887,7 @@
                   (define p (build-path (cc-path cc) v))
                   (unless (or (file-exists? p)
                               (bytecode-file-exists? p))
-                    (error "installer file does not exista: " p)))))
+                    (error "installer file does not exist: " p)))))
             (define installer
               (with-handlers ([exn:fail?
                                (lambda (exn)

@@ -1,6 +1,7 @@
 #lang racket/base
 (require "../common/check.rkt"
          "../host/thread.rkt"
+         "../host/pthread.rkt"
          "port.rkt"
          "evt.rkt")
 
@@ -32,10 +33,14 @@
       (output-port-via-property? p)))
 
 ;; This function should not be called in atomic mode,
-;; since it can invoke an artitrary function
+;; since it can invoke an arbitrary function
 (define (->core-output-port v)
   (cond
-    [(core-output-port? v) v]
+    [(core-output-port? v) (if (impersonator? v)
+                               ;; If there's an impersonator, it's only
+                               ;; an evt impersonator
+                               (unsafe-strip-impersonator v)
+                               v)]
     [(output-port? v)
      (let ([p (output-port-ref v)])
        (cond
@@ -53,7 +58,7 @@
 
    evt ; An evt that is ready when writing a byte won't block
    
-   write-out ; (bstr start-k end-k no-block/buffer? enable-break? copy? -> ...)
+   write-out ; port or (bstr start-k end-k no-block/buffer? enable-break? copy? -> ...)
    ;;          Called in atomic mode.
    ;;          Doesn't block if `no-block/buffer?` is true.
    ;;          Does enable breaks while blocking if `enable-break?` is true.
@@ -77,16 +82,19 @@
    [display-handler #:mutable])
   #:authentic
   #:property prop:output-port-evt (lambda (o)
-                                    (choice-evt
-                                     (list
-                                      (poller-evt
-                                       (poller
-                                        (lambda (self sched-info)
-                                          (cond
-                                            [(closed-state-closed? (core-port-closed o))
-                                             (values '(#t) #f)]
-                                            [else (values #f self)]))))
-                                      (core-output-port-evt o)))))
+                                    ;; not atomic mode
+                                    (let ([o (->core-output-port o)])
+                                      (choice-evt
+                                       (list
+                                        (poller-evt
+                                         (poller
+                                          (lambda (self sched-info)
+                                            ;; atomic mode
+                                            (cond
+                                              [(closed-state-closed? (core-port-closed o))
+                                               (values '(#t) #f)]
+                                              [else (values #f self)]))))
+                                        (core-output-port-evt o))))))
 
 (struct write-evt (proc)
   #:property prop:evt (poller

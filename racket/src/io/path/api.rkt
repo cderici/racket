@@ -22,7 +22,7 @@
     [(p)
      ;; Supplying `current-directory` (as opposed to `raw:current-directory`)
      ;; triggers an appropriate security-guard check if needed:
-     (raw:path->complete-path p current-directory #:wrt-given? #f)]
+     (raw:path->complete-path p current-directory-for-path->complete-path #:wrt-given? #f)]
     [(p wrt) (raw:path->complete-path p wrt #:wrt-given? #t)]))
 
 (define/who (current-drive)
@@ -44,10 +44,17 @@
      path]))
 
 (define/who current-directory
-  (chaperone-procedure raw:current-directory (make-guard-paths who)))
+  (let ([guard (make-guard-paths who)])
+    (make-derived-parameter raw:current-directory guard guard)))
+
+(define/who current-directory-for-path->complete-path
+  (let ([guard (make-guard-paths 'path->complete-path)])
+    (make-derived-parameter raw:current-directory guard guard)))
 
 (define/who current-directory-for-user
-  (chaperone-procedure raw:current-directory-for-user (make-guard-paths who)))
+  (let ([guard (make-guard-paths who)])
+    (make-derived-parameter raw:current-directory-for-user guard guard)))
 
 (define/who current-load-relative-directory
-  (chaperone-procedure raw:current-load-relative-directory (make-guard-paths who)))
+  (let ([guard (make-guard-paths who)])
+    (make-derived-parameter raw:current-load-relative-directory guard guard)))

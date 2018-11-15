@@ -240,7 +240,7 @@
 (define-syntax-rule (key=? et k1 k2)
   (cond [(eq? et 'eq)  (eq? k1 k2)]
         [(eq? et 'eqv) (eqv? k1 k2)]
-        [else          (equal? k1 k2)]))
+        [else          (key-equal? k1 k2)]))
 
 (define-syntax-rule (hash-code et k)
   (cond [(eq? et 'eq)  (eq-hash-code k)]
@@ -249,7 +249,15 @@
 
 (define ($fail default)
   (if (procedure? default)
-      (|#%app| default)
+      (if (procedure-arity-includes? default 0)
+          (|#%app| default)
+          (raise (|#%app|
+                  exn:fail:contract:arity
+                  (string-append "hash-ref: arity mismatch for failure procedure;\n"
+                                 " given procedure does not accept zero arguments\n"
+                                 "  procedure: "
+                                 (error-value->string default))
+                  (current-continuation-marks))))
       default))
 
 ;; iteration
